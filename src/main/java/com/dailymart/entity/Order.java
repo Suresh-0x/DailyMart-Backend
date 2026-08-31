@@ -27,12 +27,15 @@ public class Order {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
 
+    @Builder.Default
     @Column(name = "discount_amount", precision = 10, scale = 2)
     private BigDecimal discountAmount = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "delivery_charges", precision = 10, scale = 2)
     private BigDecimal deliveryCharges = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "tax_amount", precision = 10, scale = 2)
     private BigDecimal taxAmount = BigDecimal.ZERO;
 
@@ -43,10 +46,12 @@ public class Order {
     @Column(name = "payment_method", nullable = false)
     private PaymentMethod paymentMethod;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status")
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "order_status")
     private OrderStatus orderStatus = OrderStatus.PLACED;
@@ -57,14 +62,16 @@ public class Order {
     @Column(name = "cancellation_reason")
     private String cancellationReason;
 
+    @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
-    private List<OrderItem> orderItems;
+    private List<OrderItem> orderItems = new java.util.ArrayList<>();
 
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
     private Payment payment;
 
+    @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
-    private List<OrderTracking> trackingHistory;
+    private List<OrderTracking> trackingHistory = new java.util.ArrayList<>();
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

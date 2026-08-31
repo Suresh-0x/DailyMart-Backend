@@ -30,8 +30,10 @@ public class Payment {
     @Column(precision = 10, scale = 2)
     private BigDecimal amount;
 
+    @Builder.Default
     private String currency = "INR";
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     private PaymentStatus status = PaymentStatus.INITIATED;
 

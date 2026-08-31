@@ -28,15 +28,19 @@ public class Category {
     @JoinColumn(name = "parent_id")
     private Category parent;
 
+    @Builder.Default
     @OneToMany(mappedBy = "parent")
-    private List<Category> children;
+    private List<Category> children = new java.util.ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "category")
-    private List<Product> products;
+    private List<Product> products = new java.util.ArrayList<>();
 
+    @Builder.Default
     @Column(name = "is_active")
     private boolean active = true;
 
+    @Builder.Default
     @Column(name = "display_order")
     private int displayOrder = 0;
 

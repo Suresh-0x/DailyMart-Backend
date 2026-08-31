@@ -15,6 +15,7 @@ public class Address {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "address_type")
     private AddressType addressType = AddressType.HOME;
@@ -33,8 +34,10 @@ public class Address {
     private String city;
     private String state;
     private String pincode;
+    @Builder.Default
     private String country = "India";
 
+    @Builder.Default
     @Column(name = "is_default")
     private boolean defaultAddress = false;
 

@@ -8,8 +8,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -37,7 +40,12 @@ public class ProductService {
 
     public ProductDto getProductById(Long id) {
         return toDto(productRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Product not found")));
+            .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id)));
+    }
+
+    public ProductDto getProductBySlug(String slug) {
+        return toDto(productRepository.findBySlug(slug)
+            .orElseThrow(() -> new ResourceNotFoundException("Product not found with slug: " + slug)));
     }
 
     public Page<ProductDto> getFeaturedProducts(int page, int size) {
@@ -47,15 +55,9 @@ public class ProductService {
     @Transactional
     public ProductDto createProduct(CreateProductRequest req) {
         Category category = categoryRepository.findById(req.getCategoryId())
-            .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+            .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + req.getCategoryId()));
 
-        BigDecimal discount = BigDecimal.ZERO;
-        if (req.getOriginalPrice().compareTo(BigDecimal.ZERO) > 0
-                && req.getSellingPrice().compareTo(BigDecimal.ZERO) > 0) {
-            discount = req.getOriginalPrice().subtract(req.getSellingPrice())
-                .divide(req.getOriginalPrice(), 2, java.math.RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100));
-        }
+        BigDecimal discount = calculateDiscount(req.getOriginalPrice(), req.getSellingPrice());
 
         Product product = Product.builder()
             .name(req.getName())
@@ -71,7 +73,23 @@ public class ProductService {
             .stockQuantity(req.getStockQuantity() != null ? req.getStockQuantity() : 0)
             .featured(req.isFeatured())
             .active(true)
+            .images(new ArrayList<>())
+            .reviews(new ArrayList<>())
             .build();
+
+        if (req.getImageUrls() != null && !req.getImageUrls().isEmpty()) {
+            List<ProductImage> images = new ArrayList<>();
+            for (int i = 0; i < req.getImageUrls().size(); i++) {
+                images.add(ProductImage.builder()
+                    .product(product)
+                    .imageUrl(req.getImageUrls().get(i))
+                    .altText(req.getName())
+                    .primary(i == 0)
+                    .displayOrder(i)
+                    .build());
+            }
+            product.setImages(images);
+        }
 
         return toDto(productRepository.save(product));
     }
@@ -79,26 +97,60 @@ public class ProductService {
     @Transactional
     public ProductDto updateProduct(Long id, CreateProductRequest req) {
         Product product = productRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+            .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
+
         if (req.getCategoryId() != null) {
             Category category = categoryRepository.findById(req.getCategoryId())
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + req.getCategoryId()));
             product.setCategory(category);
         }
-        if (req.getName() != null)          product.setName(req.getName());
-        if (req.getDescription() != null)   product.setDescription(req.getDescription());
-        if (req.getOriginalPrice() != null) product.setOriginalPrice(req.getOriginalPrice());
-        if (req.getSellingPrice() != null)  product.setSellingPrice(req.getSellingPrice());
-        if (req.getStockQuantity() != null) product.setStockQuantity(req.getStockQuantity());
+        if (req.getName() != null)             product.setName(req.getName());
+        if (req.getDescription() != null)      product.setDescription(req.getDescription());
+        if (req.getShortDescription() != null) product.setShortDescription(req.getShortDescription());
+        if (req.getSku() != null)              product.setSku(req.getSku());
+        if (req.getBrand() != null)            product.setBrand(req.getBrand());
+        if (req.getOriginalPrice() != null)    product.setOriginalPrice(req.getOriginalPrice());
+        if (req.getSellingPrice() != null)     product.setSellingPrice(req.getSellingPrice());
+        if (req.getStockQuantity() != null)    product.setStockQuantity(req.getStockQuantity());
+        product.setFeatured(req.isFeatured());
+
+        if (product.getOriginalPrice() != null && product.getSellingPrice() != null) {
+            product.setDiscountPercent(calculateDiscount(product.getOriginalPrice(), product.getSellingPrice()));
+        }
+
+        if (req.getImageUrls() != null) {
+            product.getImages().clear();
+            for (int i = 0; i < req.getImageUrls().size(); i++) {
+                product.getImages().add(ProductImage.builder()
+                    .product(product)
+                    .imageUrl(req.getImageUrls().get(i))
+                    .altText(product.getName())
+                    .primary(i == 0)
+                    .displayOrder(i)
+                    .build());
+            }
+        }
+
         return toDto(productRepository.save(product));
     }
 
     @Transactional
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+            .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
         product.setActive(false);
         productRepository.save(product);
+    }
+
+    private BigDecimal calculateDiscount(BigDecimal originalPrice, BigDecimal sellingPrice) {
+        if (originalPrice != null && sellingPrice != null
+                && originalPrice.compareTo(BigDecimal.ZERO) > 0
+                && originalPrice.compareTo(sellingPrice) > 0) {
+            return originalPrice.subtract(sellingPrice)
+                .divide(originalPrice, 2, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+        }
+        return BigDecimal.ZERO;
     }
 
     private String generateSlug(String name) {
@@ -112,13 +164,14 @@ public class ProductService {
             + "-" + System.currentTimeMillis();
     }
 
-    private ProductDto toDto(Product p) {
+    public ProductDto toDto(Product p) {
         return ProductDto.builder()
             .id(p.getId())
             .name(p.getName())
             .slug(p.getSlug())
             .shortDescription(p.getShortDescription())
             .description(p.getDescription())
+            .sku(p.getSku())
             .brand(p.getBrand())
             .originalPrice(p.getOriginalPrice())
             .sellingPrice(p.getSellingPrice())
@@ -126,14 +179,17 @@ public class ProductService {
             .stockQuantity(p.getStockQuantity())
             .averageRating(p.getAverageRating())
             .totalReviews(p.getTotalReviews())
+            .totalSold(p.getTotalSold())
+            .isActive(p.isActive())
             .isFeatured(p.isFeatured())
-            .categoryId(p.getCategory().getId())
-            .categoryName(p.getCategory().getName())
+            .categoryId(p.getCategory() != null ? p.getCategory().getId() : null)
+            .categoryName(p.getCategory() != null ? p.getCategory().getName() : null)
             .images(p.getImages() != null
                 ? p.getImages().stream()
                     .map(img -> new ProductImageDto(img.getId(), img.getImageUrl(), img.isPrimary()))
                     .toList()
                 : List.of())
+            .createdAt(p.getCreatedAt())
             .build();
     }
 }

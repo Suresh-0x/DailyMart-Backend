@@ -42,32 +42,41 @@ public class Product {
     @Column(name = "selling_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal sellingPrice;
 
+    @Builder.Default
     @Column(name = "discount_percent", precision = 5, scale = 2)
     private BigDecimal discountPercent = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "stock_quantity")
     private int stockQuantity = 0;
 
+    @Builder.Default
     @Column(name = "is_active")
     private boolean active = true;
 
+    @Builder.Default
     @Column(name = "is_featured")
     private boolean featured = false;
 
+    @Builder.Default
     @Column(name = "average_rating", precision = 3, scale = 2)
     private BigDecimal averageRating = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "total_reviews")
     private int totalReviews = 0;
 
+    @Builder.Default
     @Column(name = "total_sold")
     private int totalSold = 0;
 
+    @Builder.Default
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProductImage> images;
+    private List<ProductImage> images = new java.util.ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
-    private List<Review> reviews;
+    private List<Review> reviews = new java.util.ArrayList<>();
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

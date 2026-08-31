@@ -30,12 +30,15 @@ public class Review {
     @Column(columnDefinition = "TEXT")
     private String body;
 
+    @Builder.Default
     @Column(name = "is_verified_purchase")
     private boolean verifiedPurchase = false;
 
+    @Builder.Default
     @Column(name = "is_approved")
     private boolean approved = false;
 
+    @Builder.Default
     @Column(name = "helpful_count")
     private int helpfulCount = 0;
 

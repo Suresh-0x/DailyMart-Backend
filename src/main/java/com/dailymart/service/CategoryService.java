@@ -67,6 +67,11 @@ public class CategoryService {
         categoryRepository.save(category);
     }
 
+    public CategoryDto getCategoryById(Long id) {
+        return toDto(categoryRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id)));
+    }
+
     private CategoryDto toDto(Category c) {
         return CategoryDto.builder()
             .id(c.getId())
@@ -75,9 +80,13 @@ public class CategoryService {
             .description(c.getDescription())
             .imageUrl(c.getImageUrl())
             .parentId(c.getParent() != null ? c.getParent().getId() : null)
+            .parentName(c.getParent() != null ? c.getParent().getName() : null)
             .isActive(c.isActive())
             .displayOrder(c.getDisplayOrder())
             .productCount(c.getProducts() != null ? c.getProducts().size() : 0)
+            .children(c.getChildren() != null
+                ? c.getChildren().stream().filter(Category::isActive).map(this::toDto).toList()
+                : java.util.Collections.emptyList())
             .build();
     }
 }

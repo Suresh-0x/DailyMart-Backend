@@ -34,4 +34,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Modifying
     @Query("UPDATE Product p SET p.stockQuantity = p.stockQuantity - :qty WHERE p.id = :id")
     void decrementStock(@Param("id") Long id, @Param("qty") int qty);
+
+    java.util.List<Product> findTop5ByActiveTrueOrderByTotalSoldDesc();
 }

@@ -25,6 +25,11 @@ public class CategoryController {
         return ResponseEntity.ok(categoryService.getRootCategories());
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<CategoryDto> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryService.getCategoryById(id));
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CategoryDto> create(@RequestBody CreateCategoryRequest req) {

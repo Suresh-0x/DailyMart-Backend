@@ -1,6 +1,8 @@
 package com.dailymart.dto;
 
+import jakarta.validation.constraints.*;
 import lombok.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -8,18 +10,27 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CouponDto {
-    private Long id;
+public class CreateCouponRequest {
+
+    @NotBlank(message = "Coupon code is required")
     private String code;
+
     private String description;
+
+    @NotBlank(message = "Discount type is required (PERCENTAGE or FLAT)")
     private String discountType;
+
+    @NotNull(message = "Discount value is required")
+    @DecimalMin(value = "0.01", message = "Discount value must be greater than 0")
     private BigDecimal discountValue;
+
     private BigDecimal minOrderAmount;
+
     private BigDecimal maxDiscountAmount;
-    private BigDecimal discountAmount;
-    private BigDecimal finalAmount;
+
     private LocalDate expiryDate;
+
     private Integer usageLimit;
-    private Integer usageCount;
-    private boolean active;
+
+    private Boolean active;
 }

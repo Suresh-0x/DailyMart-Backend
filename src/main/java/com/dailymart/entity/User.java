@@ -41,15 +41,19 @@ public class User implements UserDetails {
     @Column(name = "profile_image")
     private String profileImage;
 
+    @Builder.Default
     @Column(name = "is_enabled")
     private boolean enabled = false;
 
+    @Builder.Default
     @Column(name = "is_account_non_locked")
     private boolean accountNonLocked = true;
 
+    @Builder.Default
     @Column(name = "is_account_non_expired")
     private boolean accountNonExpired = true;
 
+    @Builder.Default
     @Column(name = "is_credentials_non_expired")
     private boolean credentialsNonExpired = true;
 
@@ -62,6 +66,7 @@ public class User implements UserDetails {
     @Column(name = "password_reset_token_expiry")
     private LocalDateTime passwordResetTokenExpiry;
 
+    @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",
@@ -70,6 +75,7 @@ public class User implements UserDetails {
     )
     private Set<Role> roles = new HashSet<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Address> addresses = new ArrayList<>();
 

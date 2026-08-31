@@ -22,9 +22,11 @@ public class ProductImage {
     @Column(name = "alt_text")
     private String altText;
 
+    @Builder.Default
     @Column(name = "is_primary")
     private boolean primary = false;
 
+    @Builder.Default
     @Column(name = "display_order")
     private int displayOrder = 0;
 

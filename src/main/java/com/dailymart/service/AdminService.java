@@ -8,7 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -18,14 +20,40 @@ public class AdminService {
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final OrderTrackingRepository trackingRepository;
+    private final ProductService productService;
+    private final OrderService orderService;
 
     public DashboardDto getDashboardStats() {
         BigDecimal revenue = orderRepository.sumRevenue();
+        long pendingOrders = orderRepository.countByOrderStatus(Order.OrderStatus.PLACED)
+                + orderRepository.countByOrderStatus(Order.OrderStatus.CONFIRMED)
+                + orderRepository.countByOrderStatus(Order.OrderStatus.PROCESSING);
+        long deliveredOrders = orderRepository.countByOrderStatus(Order.OrderStatus.DELIVERED);
+
+        Map<String, Long> ordersByStatus = new HashMap<>();
+        for (Order.OrderStatus status : Order.OrderStatus.values()) {
+            ordersByStatus.put(status.name(), orderRepository.countByOrderStatus(status));
+        }
+
+        List<OrderDto> recentOrders = orderRepository.findTop5ByOrderByCreatedAtDesc().stream()
+                .map(orderService::toDto)
+                .toList();
+
+        List<ProductDto> topProducts = productRepository.findTop5ByActiveTrueOrderByTotalSoldDesc().stream()
+                .map(productService::toDto)
+                .toList();
+
         return DashboardDto.builder()
             .totalUsers(userRepository.count())
             .totalProducts(productRepository.count())
             .totalOrders(orderRepository.countAllOrders())
             .totalRevenue(revenue != null ? revenue : BigDecimal.ZERO)
+            .pendingOrders(pendingOrders)
+            .deliveredOrders(deliveredOrders)
+            .recentOrders(recentOrders)
+            .topProducts(topProducts)
+            .ordersByStatus(ordersByStatus)
+            .revenueByMonth(new HashMap<>())
             .build();
     }
 
@@ -41,35 +69,40 @@ public class AdminService {
     @Transactional
     public MessageResponse toggleUserStatus(Long userId) {
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         user.setAccountNonLocked(!user.isAccountNonLocked());
         userRepository.save(user);
-        return new MessageResponse(user.isAccountNonLocked() ? "User activated" : "User blocked");
+        return new MessageResponse(user.isAccountNonLocked() ? "User unlocked and activated" : "User locked and blocked");
     }
 
     public Page<OrderDto> getAllOrders(int page, int size) {
         return orderRepository.findAll(PageRequest.of(page, size, Sort.by("createdAt").descending()))
-            .map(this::toOrderDto);
+            .map(orderService::toDto);
     }
 
     @Transactional
     public OrderDto updateOrderStatus(Long orderId, String status) {
         Order order = orderRepository.findById(orderId)
-            .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-        Order.OrderStatus newStatus = Order.OrderStatus.valueOf(status);
+            .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+        Order.OrderStatus newStatus;
+        try {
+            newStatus = Order.OrderStatus.valueOf(status.toUpperCase());
+        } catch (Exception e) {
+            throw new BadRequestException("Invalid order status: " + status);
+        }
+
         order.setOrderStatus(newStatus);
+        if (newStatus == Order.OrderStatus.DELIVERED && order.getPaymentStatus() == Order.PaymentStatus.PENDING) {
+            order.setPaymentStatus(Order.PaymentStatus.PAID);
+        }
+
         Order saved = orderRepository.save(order);
         trackingRepository.save(OrderTracking.builder()
-            .order(saved).status(newStatus)
-            .description("Order status updated to " + status).build());
-        return toOrderDto(saved);
-    }
-
-    private OrderDto toOrderDto(Order o) {
-        return OrderDto.builder()
-            .id(o.getId()).orderNumber(o.getOrderNumber())
-            .totalAmount(o.getTotalAmount()).orderStatus(o.getOrderStatus().name())
-            .paymentStatus(o.getPaymentStatus().name()).paymentMethod(o.getPaymentMethod().name())
-            .createdAt(o.getCreatedAt()).build();
+            .order(saved)
+            .status(newStatus)
+            .description("Order status updated to " + newStatus.name())
+            .location("DailyMart Delivery Network")
+            .build());
+        return orderService.toDto(saved);
     }
 }
